@@ -2,6 +2,8 @@ part of incrementally_loading_listview;
 
 typedef Future LoadMore();
 
+typedef Future Reload();
+
 typedef void OnLoadMore();
 
 typedef int ItemCount();
@@ -18,6 +20,8 @@ class IncrementallyLoadingListView extends StatefulWidget {
 
   /// A callback to an asynchronous function that would load more items
   final LoadMore loadMore;
+
+  final Reload reload;
 
   /// Determines when the list view should attempt to load more items based on of the index of the item is scrolling into view
   /// This is relative to the bottom of the list and has a default value of 0 so that it loads when the last item within the list view scrolls into view.
@@ -44,9 +48,12 @@ class IncrementallyLoadingListView extends StatefulWidget {
   /// A callback that is triggered when items have finished being loaded
   final OnLoadMoreFinished onLoadMoreFinished;
 
+  final Widget emptyShowItem;
+
   IncrementallyLoadingListView(
       {@required this.hasMore,
       @required this.loadMore,
+      this.reload,
       this.loadMoreOffsetFromBottom: 0,
       this.key,
       this.scrollDirection: Axis.vertical,
@@ -63,7 +70,8 @@ class IncrementallyLoadingListView extends StatefulWidget {
       this.addRepaintBoundaries: true,
       this.cacheExtent,
       this.onLoadMore,
-      this.onLoadMoreFinished});
+      this.onLoadMoreFinished,
+      this.emptyShowItem});
 
   @override
   IncrementallyLoadingListViewState createState() {
@@ -74,60 +82,60 @@ class IncrementallyLoadingListView extends StatefulWidget {
 class IncrementallyLoadingListViewState
     extends State<IncrementallyLoadingListView> {
   bool _loadingMore = false;
-  final PublishSubject<bool> _loadingMoreSubject = PublishSubject<bool>();
-  Stream<bool> _loadingMoreStream;
-
-  IncrementallyLoadingListViewState() {
-    _loadingMoreStream =
-        _loadingMoreSubject.switchMap((shouldLoadMore) => loadMore());
-  }
+  final PublishSubject _loadingMoreSubject = PublishSubject();
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-        stream: _loadingMoreStream,
+        stream: _loadingMoreSubject.stream,
         builder: (context, snapshot) {
-          return ListView.builder(
-            key: widget.key,
-            scrollDirection: widget.scrollDirection,
-            reverse: widget.reverse,
-            controller: widget.controller,
-            primary: widget.primary,
-            physics: widget.physics,
-            shrinkWrap: widget.shrinkWrap,
-            padding: widget.padding,
-            itemExtent: widget.itemExtent,
-            itemBuilder: (itemBuilderContext, index) {
-              if (!_loadingMore &&
-                  index ==
-                      widget.itemCount() -
-                          widget.loadMoreOffsetFromBottom -
-                          1 &&
-                  widget.hasMore()) {
-                _loadingMore = true;
+          ListView listView;
+          if (widget.itemCount() == 0 && widget.emptyShowItem != null) {
+            listView = ListView(
+              children: <Widget>[widget.emptyShowItem],
+            );
+          } else {
+            listView = ListView.builder(
+              key: widget.key,
+              scrollDirection: widget.scrollDirection,
+              reverse: widget.reverse,
+              controller: widget.controller,
+              primary: widget.primary,
+              physics: widget.physics,
+              shrinkWrap: widget.shrinkWrap,
+              padding: widget.padding,
+              itemExtent: widget.itemExtent,
+              itemBuilder: (itemBuilderContext, index) {
+                if (!_loadingMore &&
+                    index ==
+                        widget.itemCount() -
+                            widget.loadMoreOffsetFromBottom -
+                            1 &&
+                    widget.hasMore()) {
+                  _loadingMore = true;
+                  widget.loadMore().then((_) {
+                    _loadingMoreSubject.add(true);
+                    _loadingMore = false;
+                  });
+                }
+                return widget.itemBuilder(itemBuilderContext, index);
+              },
+              itemCount: widget.itemCount(),
+              addAutomaticKeepAlives: widget.addAutomaticKeepAlives,
+              addRepaintBoundaries: widget.addRepaintBoundaries,
+              cacheExtent: widget.cacheExtent,
+            );
+          }
+          if (widget.reload == null) return listView;
+          return RefreshIndicator(
+            child: listView,
+            onRefresh: () {
+              return widget.reload().then((_) {
                 _loadingMoreSubject.add(true);
-              }
-              return widget.itemBuilder(itemBuilderContext, index);
+              });
             },
-            itemCount: widget.itemCount(),
-            addAutomaticKeepAlives: widget.addAutomaticKeepAlives,
-            addRepaintBoundaries: widget.addRepaintBoundaries,
-            cacheExtent: widget.cacheExtent,
           );
         });
-  }
-
-  Stream<bool> loadMore() async* {
-    yield _loadingMore;
-    if (widget.onLoadMore != null) {
-      widget.onLoadMore();
-    }
-    await widget.loadMore();
-    _loadingMore = false;
-    yield _loadingMore;
-    if (widget.onLoadMoreFinished != null) {
-      widget.onLoadMoreFinished();
-    }
   }
 
   @override
