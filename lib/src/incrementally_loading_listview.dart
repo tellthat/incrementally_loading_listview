@@ -49,6 +49,8 @@ class IncrementallyLoadingListView extends StatefulWidget {
   final OnLoadMoreFinished onLoadMoreFinished;
 
   final Widget emptyShowItem;
+  final Color indicatorColor;
+  final Color indicatorBgColor;
 
   IncrementallyLoadingListView(
       {@required this.hasMore,
@@ -71,7 +73,9 @@ class IncrementallyLoadingListView extends StatefulWidget {
       this.cacheExtent,
       this.onLoadMore,
       this.onLoadMoreFinished,
-      this.emptyShowItem});
+      this.emptyShowItem,
+      this.indicatorColor,
+      this.indicatorBgColor});
 
   @override
   IncrementallyLoadingListViewState createState() {
@@ -128,6 +132,9 @@ class IncrementallyLoadingListViewState
           }
           if (widget.reload == null) return listView;
           return RefreshIndicator(
+            color: widget.indicatorColor ?? Theme.of(context).accentColor,
+            backgroundColor:
+                widget.indicatorBgColor ?? Theme.of(context).canvasColor,
             child: listView,
             onRefresh: () {
               return widget.reload().then((_) {
