@@ -83,10 +83,18 @@ class IncrementallyLoadingListView extends StatefulWidget {
   }
 }
 
-class IncrementallyLoadingListViewState
-    extends State<IncrementallyLoadingListView> {
+class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListView> {
   bool _loadingMore = false;
   final PublishSubject _loadingMoreSubject = PublishSubject();
+  GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshIndicatorKey.currentState.show();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +102,7 @@ class IncrementallyLoadingListViewState
         stream: _loadingMoreSubject.stream,
         builder: (context, snapshot) {
           ListView listView;
-          if (widget.itemCount() == 0 && widget.emptyShowItem != null) {
+          if (widget.itemCount() == 0 && widget.emptyShowItem != null && !widget.hasMore()) {
             listView = ListView(
               children: <Widget>[widget.emptyShowItem],
             );
@@ -110,12 +118,7 @@ class IncrementallyLoadingListViewState
               padding: widget.padding,
               itemExtent: widget.itemExtent,
               itemBuilder: (itemBuilderContext, index) {
-                if (!_loadingMore &&
-                    index ==
-                        widget.itemCount() -
-                            widget.loadMoreOffsetFromBottom -
-                            1 &&
-                    widget.hasMore()) {
+                if (!_loadingMore && index == widget.itemCount() - widget.loadMoreOffsetFromBottom - 1 && widget.hasMore()) {
                   _loadingMore = true;
                   widget.loadMore().then((_) {
                     _loadingMoreSubject.add(true);
@@ -132,9 +135,9 @@ class IncrementallyLoadingListViewState
           }
           if (widget.reload == null) return listView;
           return RefreshIndicator(
+            key: _refreshIndicatorKey,
             color: widget.indicatorColor ?? Theme.of(context).accentColor,
-            backgroundColor:
-                widget.indicatorBgColor ?? Theme.of(context).canvasColor,
+            backgroundColor: widget.indicatorBgColor ?? Theme.of(context).canvasColor,
             child: listView,
             onRefresh: () {
               return widget.reload().then((_) {
