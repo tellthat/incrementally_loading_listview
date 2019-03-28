@@ -121,7 +121,7 @@ class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListVi
                 if (!_loadingMore && index == widget.itemCount() - widget.loadMoreOffsetFromBottom - 1 && widget.hasMore()) {
                   _loadingMore = true;
                   widget.loadMore().then((_) {
-                    _loadingMoreSubject.add(true);
+                    if (!_loadingMoreSubject.isClosed) _loadingMoreSubject.add(true);
                     _loadingMore = false;
                   });
                 }
@@ -141,7 +141,7 @@ class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListVi
             child: listView,
             onRefresh: () {
               return widget.reload().then((_) {
-                _loadingMoreSubject.add(true);
+                if (!_loadingMoreSubject.isClosed) _loadingMoreSubject.add(true);
               });
             },
           );
