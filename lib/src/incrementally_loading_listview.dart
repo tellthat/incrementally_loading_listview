@@ -51,31 +51,34 @@ class IncrementallyLoadingListView extends StatefulWidget {
   final Widget emptyShowItem;
   final Color indicatorColor;
   final Color indicatorBgColor;
+  final GlobalKey<RefreshIndicatorState> refreshIndicatorKey;
 
-  IncrementallyLoadingListView(
-      {@required this.hasMore,
-      @required this.loadMore,
-      this.reload,
-      this.loadMoreOffsetFromBottom: 0,
-      this.key,
-      this.scrollDirection: Axis.vertical,
-      this.reverse: false,
-      this.controller,
-      this.primary,
-      this.physics,
-      this.shrinkWrap: false,
-      this.padding,
-      this.itemExtent,
-      @required this.itemBuilder,
-      @required this.itemCount,
-      this.addAutomaticKeepAlives: true,
-      this.addRepaintBoundaries: true,
-      this.cacheExtent,
-      this.onLoadMore,
-      this.onLoadMoreFinished,
-      this.emptyShowItem,
-      this.indicatorColor,
-      this.indicatorBgColor});
+  IncrementallyLoadingListView({
+    @required this.hasMore,
+    @required this.loadMore,
+    this.reload,
+    this.loadMoreOffsetFromBottom: 0,
+    this.key,
+    this.scrollDirection: Axis.vertical,
+    this.reverse: false,
+    this.controller,
+    this.primary,
+    this.physics,
+    this.shrinkWrap: false,
+    this.padding,
+    this.itemExtent,
+    @required this.itemBuilder,
+    @required this.itemCount,
+    this.addAutomaticKeepAlives: true,
+    this.addRepaintBoundaries: true,
+    this.cacheExtent,
+    this.onLoadMore,
+    this.onLoadMoreFinished,
+    this.emptyShowItem,
+    this.indicatorColor,
+    this.indicatorBgColor,
+    this.refreshIndicatorKey,
+  });
 
   @override
   IncrementallyLoadingListViewState createState() {
@@ -86,11 +89,13 @@ class IncrementallyLoadingListView extends StatefulWidget {
 class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListView> {
   bool _loadingMore = false;
   final PublishSubject _loadingMoreSubject = PublishSubject();
-  GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  GlobalKey<RefreshIndicatorState> _refreshIndicatorKey;
 
   @override
   void initState() {
     super.initState();
+    _refreshIndicatorKey = widget.refreshIndicatorKey;
+    _refreshIndicatorKey ??= GlobalKey<RefreshIndicatorState>();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshIndicatorKey.currentState.show();
     });
@@ -121,7 +126,7 @@ class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListVi
                 if (!_loadingMore && index == widget.itemCount() - widget.loadMoreOffsetFromBottom - 1 && widget.hasMore()) {
                   _loadingMore = true;
                   widget.loadMore().then((_) {
-                    if (!_loadingMoreSubject.isClosed) _loadingMoreSubject.add(true);
+                    _loadingMoreSubject.add(true);
                     _loadingMore = false;
                   });
                 }
@@ -141,7 +146,7 @@ class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListVi
             child: listView,
             onRefresh: () {
               return widget.reload().then((_) {
-                if (!_loadingMoreSubject.isClosed) _loadingMoreSubject.add(true);
+                _loadingMoreSubject.add(true);
               });
             },
           );
