@@ -146,7 +146,7 @@ class IncrementallyLoadingListViewState extends State<IncrementallyLoadingListVi
             child: listView,
             onRefresh: () {
               return widget.reload().then((_) {
-                _loadingMoreSubject.add(true);
+                if (!_loadingMoreSubject.isClosed) _loadingMoreSubject.add(true);
               });
             },
           );
